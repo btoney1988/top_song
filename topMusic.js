@@ -13,12 +13,12 @@ var connection = mysql.createConnection({
 
   // Your password
   password: "",
-  database: "top_songdb"
+  database: "top_songsdb"
 });
 
 connection.connect(function (err) {
   if (err) throw err;
-  // run the start function after the connection is made to prompt the user
+
   start();
 });
 
@@ -31,13 +31,13 @@ function start() {
       choices: ["Artist", "Multiple Top 5000", "Specific Range", "Song in Top 5000"]
     })
     .then(function (answer) {
-      // based on their answer, either call the bid or the post functions
+
       switch (answer.query) {
-        case "artist":
+        case "Artist":
           getArtist();
           break;
         case "Multiple Top 5000":
-          getMultipleTop();
+          getMultiple();
           break;
         case "Specific Range":
           getSpecificRange();
@@ -61,35 +61,84 @@ function getArtist() {
     ])
     .then(function (answer) {
       connection.query(
-        `SELECT * FROM top_songsdb.top_albums WHERE artist = ?
-        	INNER JOIN top_albums 
-		        ON top_songsdb.top_albums.year = top5000.year
-		        AND top_songsdb.top_albums.artist = top5000.artist
-	        WHERE top_songsdb.top_albums.artist = ?
-          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
+        `SELECT * 
+         FROM top_songsdb.top_albums
+         INNER JOIN top_songsdb.top5000 
+		      ON top_songsdb.top_albums.year = top_songsdb.top5000.year
+		      AND top_songsdb.top_albums.artist = top_songsdb.top5000.artist
+	       WHERE top_songsdb.top_albums.artist = ?
+         ORDER BY top_albums.year DESC, top_albums.position;`,
+        [
+          answer.artist
+        ],
         function (err, res) {
           if (err) throw err;
-          console.log(res);
-          return res;
+          console.table(res);
+          start();
         }
       );
     });
 }
 
-function getMultipleTop() {
-  connection.query(
-    `SELECT count(*) FROM top_songsdb.top_albums WHERE
-          INNER JOIN top5000 
-		        ON top_songsdb.top_albums.year = top5000.year
-		        AND top_songsdb.top_albums.artist = top5000.artist
-	        WHERE top_songsdb.top_albums.artist = ?
-          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
-    function (err, res) {
-      if (err) throw err;
-      console.log(res);
-      return res;
-    }
-  );
+function getSpecificRange() {
+  inquirer
+    .prompt([
+      {
+        name: "query",
+        type: "list",
+        message: "What query would you like to execute?",
+        choices: ["top_albums", "top5000"]
+      },
+      {
+        name: "firstParam",
+        type: "input",
+        message: "Please enter first parameter?"
+      },
+      {
+        name: "secondParam",
+        type: "input",
+        message: "Please enter second parameter?"
+      }
+    ])
+    .then(function (answer) {
+      switch (answer.query) {
+        case "top_albums":
+          connection.query(
+
+            `SELECT * 
+         FROM top_albums
+	       WHERE position BETWEEN ? AND ?
+         ORDER BY top_albums.year DESC, top_albums.position;`,
+            [
+              answer.firstParam,
+              answer.secondParam,
+            ],
+            function (err, res) {
+              if (err) throw err;
+              console.table(res);
+              start();
+            }
+          );
+          break;
+        case "top5000":
+          connection.query(
+
+            `SELECT * 
+         FROM top5000
+	       WHERE position BETWEEN ? AND ?
+         ORDER BY top5000.year DESC, top5000.position;`,
+            [
+              answer.firstParam,
+              answer.secondParam,
+            ],
+            function (err, res) {
+              if (err) throw err;
+              console.table(res);
+              start();
+            }
+          );
+      }
+    });
 }
 
 function getSong() {
@@ -103,17 +152,34 @@ function getSong() {
     ])
     .then(function (answer) {
       connection.query(
-        `SELECT count(*) FROM top_songsdb.top_albums WHERE song = ?
-        	INNER JOIN top5000 
-		        ON top_songsdb.top_albums.year = top5000.year
-		        AND top_songsdb.top_albums.artist = top5000.artist
-	        WHERE top_songsdb.top_albums.song = ?
-          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
+        `SELECT count(*) 
+         FROM top_songsdb.top5000
+         WHERE top_songsdb.top5000.song = ?
+         ORDER BY top_songsdb.top5000.year DESC, top_songsdb.top5000.position;`,
+        [
+          answer.song
+        ],
         function (err, res) {
           if (err) throw err;
-          console.log(res);
-          return res;
+          console.table(res);
+          start();
         }
       );
     });
+}
+
+function getMultiple() {
+
+  connection.query(
+    `SELECT artist, count(*) 
+     FROM top5000 
+     GROUP BY artist 
+     HAVING count(*) > 1
+     ORDER BY top5000.year DESC, top5000.position;`,
+    function (err, res) {
+      if (err) throw err;
+      console.table(res);
+      start();
+    }
+  );
 }
