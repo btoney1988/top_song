@@ -13,7 +13,7 @@ var connection = mysql.createConnection({
 
   // Your password
   password: "",
-  database: "greatBay_DB"
+  database: "top_songdb"
 });
 
 connection.connect(function (err) {
@@ -49,9 +49,8 @@ function start() {
 
     });
 }
-// function to handle posting new items up for auction
+
 function getArtist() {
-  // prompt for info about the item being put up for auction
   inquirer
     .prompt([
       {
@@ -61,43 +60,59 @@ function getArtist() {
       }
     ])
     .then(function (answer) {
-      // when finished prompting, insert a new item into the db with that info
       connection.query(
-        `SELECT * FROM top_albums.artist = ?
-        	INNER JOIN top5000 
-		        ON top_albums.year = top5000.year
-		        AND top_albums.artist = top5000.artist
-	        WHERE top_albums.artist = ?
-          ORDER BY top_albums.year DESC, top_albums.position, top_albums.artist, top_albums.song, top_albums.album`,
-        function (err, result) {
+        `SELECT * FROM top_songsdb.top_albums WHERE artist = ?
+        	INNER JOIN top_albums 
+		        ON top_songsdb.top_albums.year = top5000.year
+		        AND top_songsdb.top_albums.artist = top5000.artist
+	        WHERE top_songsdb.top_albums.artist = ?
+          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
+        function (err, res) {
           if (err) throw err;
-          console.log(result);
-          return result;
+          console.log(res);
+          return res;
         }
       );
     });
 }
 
-// function to handle posting new items up for auction
 function getMultipleTop() {
-  // prompt for info about the item being put up for auction
+  connection.query(
+    `SELECT count(*) FROM top_songsdb.top_albums WHERE
+          INNER JOIN top5000 
+		        ON top_songsdb.top_albums.year = top5000.year
+		        AND top_songsdb.top_albums.artist = top5000.artist
+	        WHERE top_songsdb.top_albums.artist = ?
+          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
+    function (err, res) {
+      if (err) throw err;
+      console.log(res);
+      return res;
+    }
+  );
+}
+
+function getSong() {
   inquirer
     .prompt([
       {
-        name: "multiple",
+        name: "song",
         type: "input",
-        message: "What artist would you like to search?"
+        message: "What song would you like to search?"
       }
     ])
     .then(function (answer) {
-      // when finished prompting, insert a new item into the db with that info
       connection.query(
-        "SELECT * FROM top_albums.artist = ?",
-        function (err) {
+        `SELECT count(*) FROM top_songsdb.top_albums WHERE song = ?
+        	INNER JOIN top5000 
+		        ON top_songsdb.top_albums.year = top5000.year
+		        AND top_songsdb.top_albums.artist = top5000.artist
+	        WHERE top_songsdb.top_albums.song = ?
+          ORDER BY top_songsdb.top_albums.year DESC, top_songsdb.top_albums.position, top_songsdb.top_albums.artist, top_songsdb.top_albums.song, top_songsdb.top_albums.album`,
+        function (err, res) {
           if (err) throw err;
-          console.log("Success!");
-          // re-prompt the user for if they want to bid or post
-          start();
+          console.log(res);
+          return res;
         }
       );
     });
